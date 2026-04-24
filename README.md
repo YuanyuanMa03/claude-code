@@ -86,6 +86,13 @@ powershell -c "irm bun.sh/install.ps1 | iex"
    # Windows PowerShell
    # 关闭并重新打开 PowerShell 即可
    ```
+   如果安装脚本提示：
+   `Added "~/.bun/bin" to $PATH in "~/.zshrc"`
+   则也可以直接执行：
+   ```bash
+   exec /bin/zsh
+   bun --help
+   ```
 
 2. **验证安装：**
    ```bash
@@ -99,9 +106,24 @@ powershell -c "irm bun.sh/install.ps1 | iex"
 
 - ⚙️ 常规的配置 CC 的方式, 各大提供商都有自己的配置方式
 
+### 📍 命令执行位置（非常重要）
+
+- `curl -fsSL https://bun.sh/install | bash`、`bun --version`、`bun upgrade`：
+  在**任意目录**都可以执行（这是系统级 Bun 安装/检查命令）。
+- `bun install`、`bun run dev`、`bun run build`、`bun run dev:inspect`：
+  必须在本项目**仓库根目录**执行（也就是包含 `package.json` 的目录）。
+
+示例（先进入仓库根目录再执行项目命令）：
+```bash
+cd /path/to/claude-code
+bun install
+bun run dev
+```
+
 ### 📥 安装
 
 ```bash
+# 在仓库根目录执行
 bun install
 ```
 
@@ -109,9 +131,11 @@ bun install
 
 ```bash
 # 开发模式, 看到版本号 888 说明就是对了
+# 在仓库根目录执行
 bun run dev
 
 # 构建
+# 在仓库根目录执行
 bun run build
 ```
 
@@ -160,6 +184,7 @@ TUI (REPL) 模式需要真实终端，无法直接通过 VS Code launch 启动�
 1. **终端启动 inspect 服务**：
 
    ```bash
+   # 在仓库根目录执行
    bun run dev:inspect
    ```
 

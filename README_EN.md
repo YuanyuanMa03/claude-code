@@ -72,6 +72,13 @@ powershell -c "irm bun.sh/install.ps1 | iex"
    # Windows PowerShell
    # Close and reopen PowerShell
    ```
+   If the installer prints:
+   `Added "~/.bun/bin" to $PATH in "~/.zshrc"`
+   you can also run:
+   ```bash
+   exec /bin/zsh
+   bun --help
+   ```
 
 2. **Verify installation:**
    ```bash
@@ -85,9 +92,24 @@ powershell -c "irm bun.sh/install.ps1 | iex"
 
 - Standard Claude Code configuration — each provider has its own setup method
 
+### Command Execution Location (Important)
+
+- `curl -fsSL https://bun.sh/install | bash`, `bun --version`, `bun upgrade`:
+  can be run from **any directory** (system-level Bun setup/check commands).
+- `bun install`, `bun run dev`, `bun run build`, `bun run dev:inspect`:
+  must be run from the project **repository root** (the directory containing `package.json`).
+
+Example:
+```bash
+cd /path/to/claude-code
+bun install
+bun run dev
+```
+
 ### Install
 
 ```bash
+# Run in repository root
 bun install
 ```
 
@@ -95,9 +117,11 @@ bun install
 
 ```bash
 # Dev mode — if you see version 888, it's working
+# Run in repository root
 bun run dev
 
 # Build
+# Run in repository root
 bun run build
 ```
 
@@ -159,6 +183,7 @@ The TUI (REPL) mode requires a real terminal and cannot be launched directly via
 
 1. **Start inspect server in terminal**:
    ```bash
+   # Run in repository root
    bun run dev:inspect
    ```
    This outputs an address like `ws://localhost:8888/xxxxxxxx`.
