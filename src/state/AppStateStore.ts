@@ -1,5 +1,6 @@
 import type { Notification } from 'src/context/notifications.js'
 import type { TodoList } from 'src/utils/todo/types.js'
+import type { CompanionRuntimeState } from '../buddy/types.js'
 import type { BridgePermissionCallbacks } from '../bridge/bridgePermissionCallbacks.js'
 import type { Command } from '../commands.js'
 import type { ChannelPermissionCallbacks } from '../services/mcp/channelPermissions.js'
@@ -169,6 +170,8 @@ export type AppState = DeepImmutable<{
   companionReaction?: string
   // Timestamp of last /buddy pet — CompanionSprite renders hearts while recent
   companionPetAt?: number
+  // Local Buddy frontstage state rendered by CompanionSprite.
+  companionState: CompanionRuntimeState
   // TODO (ashwin): see if we can use utility-types DeepReadonly for this
   mcp: {
     clients: MCPServerConnection[]
@@ -500,6 +503,12 @@ export function getDefaultAppState(): AppState {
     toolPermissionContext: {
       ...getEmptyToolPermissionContext(),
       mode: initialMode,
+    },
+    companionState: {
+      mode: 'idle',
+      mood: 'calm',
+      lastEventAt: 0,
+      lastEventKind: undefined,
     },
     agent: undefined,
     agentDefinitions: { activeAgents: [], allAgents: [] },

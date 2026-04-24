@@ -97,6 +97,53 @@ export const STAT_NAMES = [
 ] as const
 export type StatName = (typeof STAT_NAMES)[number]
 
+export const COMPANION_STYLES = [
+  'soft',
+  'sharp',
+  'quiet',
+  'playful',
+] as const
+export type CompanionStyle = (typeof COMPANION_STYLES)[number]
+
+export const COMPANION_VERBOSITIES = ['low', 'normal', 'high'] as const
+export type CompanionVerbosity = (typeof COMPANION_VERBOSITIES)[number]
+
+export const COMPANION_MODES = [
+  'idle',
+  'thinking',
+  'reading',
+  'editing',
+  'testing',
+  'blocked',
+  'done',
+  'error',
+] as const
+export type CompanionMode = (typeof COMPANION_MODES)[number]
+
+export const COMPANION_MOODS = [
+  'calm',
+  'focused',
+  'curious',
+  'excited',
+  'worried',
+  'tired',
+] as const
+export type CompanionMood = (typeof COMPANION_MOODS)[number]
+
+export type CompanionProfile = {
+  displayName: string
+  style: CompanionStyle
+  verbosity: CompanionVerbosity
+  localReactions: boolean
+}
+
+export type CompanionRuntimeState = {
+  mode: CompanionMode
+  mood: CompanionMood
+  lastEventAt: number
+  lastEventKind?: string
+}
+
 // Deterministic parts — derived from hash(userId)
 export type CompanionBones = {
   rarity: Rarity
@@ -112,6 +159,10 @@ export type CompanionSoul = {
   name: string
   personality: string
   seed?: string
+  displayName?: string
+  style?: CompanionStyle
+  verbosity?: CompanionVerbosity
+  localReactions?: boolean
 }
 
 export type Companion = CompanionBones &

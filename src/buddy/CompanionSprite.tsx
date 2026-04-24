@@ -8,7 +8,7 @@ import type { AppState } from '../state/AppStateStore.js'
 import { getGlobalConfig } from '../utils/config.js'
 import { isFullscreenActive } from '../utils/fullscreen.js'
 import type { Theme } from '../utils/theme.js'
-import { getCompanion } from './companion.js'
+import { getCompanion, getCompanionProfile } from './companion.js'
 import { renderFace, renderSprite, spriteFrameCount } from './sprites.js'
 import { RARITY_COLORS } from './types.js'
 
@@ -106,6 +106,10 @@ const SPRITE_PADDING_X = 2
 const BUBBLE_WIDTH = 36 // SpeechBubble box (34) + tail column
 const NARROW_QUIP_CAP = 24
 
+function statusLabel(name: string, mode: string): string {
+  return mode === 'idle' ? name : `${name} ${mode}`
+}
+
 function spriteColWidth(nameWidth: number): number {
   return Math.max(SPRITE_BODY_WIDTH, nameWidth + NAME_ROW_PAD)
 }
@@ -123,7 +127,7 @@ export function companionReservedColumns(
   const companion = getCompanion()
   if (!companion || getGlobalConfig().companionMuted) return 0
   if (terminalColumns < MIN_COLS_FOR_FULL_SPRITE) return 0
-  const nameWidth = stringWidth(companion.name)
+  const nameWidth = stringWidth(getCompanionProfile(companion).displayName) + 8
   const bubble = speaking && !isFullscreenActive() ? BUBBLE_WIDTH : 0
   return spriteColWidth(nameWidth) + SPRITE_PADDING_X + bubble
 }
@@ -131,6 +135,7 @@ export function companionReservedColumns(
 export function CompanionSprite(): React.ReactNode {
   const reaction = useAppState(s => s.companionReaction)
   const petAt = useAppState(s => s.companionPetAt)
+  const companionState = useAppState(s => s.companionState)
   const focused = useAppState(s => s.footerSelection === 'companion')
   const setAppState = useSetAppState()
   const { columns } = useTerminalSize()
@@ -176,8 +181,10 @@ export function CompanionSprite(): React.ReactNode {
   const companion = getCompanion()
   if (!companion || getGlobalConfig().companionMuted) return null
 
+  const profile = getCompanionProfile(companion)
+  const labelText = statusLabel(profile.displayName, companionState.mode)
   const color = RARITY_COLORS[companion.rarity]
-  const colWidth = spriteColWidth(stringWidth(companion.name))
+  const colWidth = spriteColWidth(stringWidth(labelText))
 
   const bubbleAge = reaction ? tick - lastSpokeTick.current : 0
   const fading =
@@ -196,8 +203,8 @@ export function CompanionSprite(): React.ReactNode {
     const label = quip
       ? `"${quip}"`
       : focused
-        ? ` ${companion.name} `
-        : companion.name
+        ? ` ${labelText} `
+        : labelText
     return (
       <Box paddingX={1} alignSelf="flex-end">
         <Text>
@@ -273,7 +280,7 @@ export function CompanionSprite(): React.ReactNode {
         color={focused ? color : undefined}
         inverse={focused}
       >
-        {focused ? ` ${companion.name} ` : companion.name}
+        {focused ? ` ${labelText} ` : labelText}
       </Text>
     </Box>
   )

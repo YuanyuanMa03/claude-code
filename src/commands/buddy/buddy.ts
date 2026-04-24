@@ -1,14 +1,23 @@
 import React from 'react'
 import {
   getCompanion,
+  getCompanionProfile,
   rollWithSeed,
   generateSeed,
+  sanitizeCompanionName,
 } from '../../buddy/companion.js'
-import { type StoredCompanion, RARITY_STARS } from '../../buddy/types.js'
+import { applyCompanionEvent } from '../../buddy/frontstage.js'
+import {
+  type StoredCompanion,
+  COMPANION_STYLES,
+  COMPANION_VERBOSITIES,
+  RARITY_STARS,
+  type CompanionStyle,
+  type CompanionVerbosity,
+} from '../../buddy/types.js'
 import { renderSprite } from '../../buddy/sprites.js'
 import { CompanionCard } from '../../buddy/CompanionCard.js'
 import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js'
-import { triggerCompanionReaction } from '../../buddy/companionReact.js'
 import type { ToolUseContext } from '../../Tool.js'
 import type {
   LocalJSXCommandContext,
@@ -67,6 +76,32 @@ function speciesLabel(species: string): string {
   return species.charAt(0).toUpperCase() + species.slice(1)
 }
 
+function requireCompanion(onDone: LocalJSXCommandOnDone) {
+  const companion = getCompanion()
+  if (!companion) {
+    onDone('no companion yet · run /buddy first', { display: 'system' })
+    return undefined
+  }
+  return companion
+}
+
+function isCompanionStyle(value: string): value is CompanionStyle {
+  return (COMPANION_STYLES as readonly string[]).includes(value)
+}
+
+function isCompanionVerbosity(value: string): value is CompanionVerbosity {
+  return (COMPANION_VERBOSITIES as readonly string[]).includes(value)
+}
+
+function setStoredCompanion(
+  update: (stored: StoredCompanion) => StoredCompanion,
+): void {
+  saveGlobalConfig(cfg => {
+    if (!cfg.companion) return cfg
+    return { ...cfg, companion: update(cfg.companion) }
+  })
+}
+
 export async function call(
   onDone: LocalJSXCommandOnDone,
   context: ToolUseContext & LocalJSXCommandContext,
@@ -74,6 +109,79 @@ export async function call(
 ): Promise<React.ReactNode> {
   const sub = args?.trim().toLowerCase() ?? ''
   const setState = context.setAppState
+
+  if (sub.startsWith('rename ')) {
+    const companion = requireCompanion(onDone)
+    if (!companion) return null
+    const displayName = sanitizeCompanionName(args.trim().slice('rename '.length))
+    if (!displayName) {
+      onDone('usage: /buddy rename <name>', { display: 'system' })
+      return null
+    }
+    setStoredCompanion(stored => ({ ...stored, displayName }))
+    onDone(`companion renamed to ${displayName}`, { display: 'system' })
+    return null
+  }
+
+  if (sub.startsWith('style ')) {
+    if (!requireCompanion(onDone)) return null
+    const style = sub.slice('style '.length).trim()
+    if (!isCompanionStyle(style)) {
+      onDone('usage: /buddy style soft|sharp|quiet|playful', {
+        display: 'system',
+      })
+      return null
+    }
+    setStoredCompanion(stored => ({ ...stored, style }))
+    onDone(`companion style set to ${style}`, { display: 'system' })
+    return null
+  }
+
+  if (sub.startsWith('verbose ')) {
+    if (!requireCompanion(onDone)) return null
+    const verbosity = sub.slice('verbose '.length).trim()
+    if (!isCompanionVerbosity(verbosity)) {
+      onDone('usage: /buddy verbose low|normal|high', { display: 'system' })
+      return null
+    }
+    setStoredCompanion(stored => ({ ...stored, verbosity }))
+    onDone(`companion verbosity set to ${verbosity}`, { display: 'system' })
+    return null
+  }
+
+  if (sub.startsWith('local ')) {
+    if (!requireCompanion(onDone)) return null
+    const value = sub.slice('local '.length).trim()
+    if (value !== 'on' && value !== 'off') {
+      onDone('usage: /buddy local on|off', { display: 'system' })
+      return null
+    }
+    setStoredCompanion(stored => ({
+      ...stored,
+      localReactions: value === 'on',
+    }))
+    onDone(`local companion reactions ${value}`, { display: 'system' })
+    return null
+  }
+
+  if (sub === 'status') {
+    const companion = requireCompanion(onDone)
+    if (!companion) return null
+    const profile = getCompanionProfile(companion)
+    const state = context.getAppState?.()?.companionState
+    onDone(
+      [
+        `${profile.displayName} status`,
+        `style: ${profile.style}`,
+        `verbosity: ${profile.verbosity}`,
+        `local reactions: ${profile.localReactions ? 'on' : 'off'}`,
+        `mode: ${state?.mode ?? 'idle'}`,
+        `mood: ${state?.mood ?? 'calm'}`,
+      ].join('\n'),
+      { display: 'system' },
+    )
+    return null
+  }
 
   // ── /buddy off — mute companion ──
   if (sub === 'off') {
@@ -99,18 +207,23 @@ export async function call(
 
     // Auto-unmute on pet + trigger heart animation
     saveGlobalConfig(cfg => ({ ...cfg, companionMuted: false }))
-    setState?.(prev => ({ ...prev, companionPetAt: Date.now() }))
+    const now = Date.now()
+    const profile = getCompanionProfile(companion)
+    setState?.(prev => {
+      const result = applyCompanionEvent(prev.companionState, profile, {
+        kind: 'pet',
+        severity: 'success',
+        now,
+      })
+      return {
+        ...prev,
+        companionPetAt: now,
+        companionState: result.state,
+        companionReaction: result.reaction ?? prev.companionReaction,
+      }
+    })
 
-    // Trigger a post-pet reaction
-    triggerCompanionReaction(context.messages ?? [], reaction =>
-      setState?.(prev =>
-        prev.companionReaction === reaction
-          ? prev
-          : { ...prev, companionReaction: reaction },
-      ),
-    )
-
-    onDone(`petted ${companion.name}`, { display: 'system' })
+    onDone(`petted ${profile.displayName}`, { display: 'system' })
     return null
   }
 
@@ -125,9 +238,11 @@ export async function call(
   if (companion) {
     // Return JSX card — matches official vc8 component
     const lastReaction = context.getAppState?.()?.companionReaction
+    const companionState = context.getAppState?.()?.companionState
     return React.createElement(CompanionCard, {
       companion,
       lastReaction,
+      companionState,
       onDone: onDone as unknown as Parameters<typeof CompanionCard>[0]['onDone'],
     })
   }
@@ -142,6 +257,9 @@ export async function call(
   const stored: StoredCompanion = {
     name,
     personality,
+    style: 'soft',
+    verbosity: 'normal',
+    localReactions: true,
     seed,
     hatchedAt: Date.now(),
   }

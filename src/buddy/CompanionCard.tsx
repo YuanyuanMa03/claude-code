@@ -6,7 +6,14 @@ import React from 'react';
 import { Box, Text } from '@anthropic/ink';
 import { useInput } from '@anthropic/ink';
 import { renderSprite } from './sprites.js';
-import { RARITY_COLORS, RARITY_STARS, STAT_NAMES, type Companion } from './types.js';
+import { getCompanionProfile } from './profile.js';
+import {
+  RARITY_COLORS,
+  RARITY_STARS,
+  STAT_NAMES,
+  type Companion,
+  type CompanionRuntimeState,
+} from './types.js';
 
 const CARD_WIDTH = 40;
 const CARD_PADDING_X = 2;
@@ -25,15 +32,18 @@ function StatBar({ name, value }: { name: string; value: number }) {
 export function CompanionCard({
   companion,
   lastReaction,
+  companionState,
   onDone,
 }: {
   companion: Companion;
   lastReaction?: string;
+  companionState?: CompanionRuntimeState;
   onDone?: (result?: string, options?: { display?: string }) => void;
 }) {
   const color = RARITY_COLORS[companion.rarity];
   const stars = RARITY_STARS[companion.rarity];
   const sprite = renderSprite(companion, 0);
+  const profile = getCompanionProfile(companion);
 
   // Press any key to dismiss
   useInput(
@@ -78,7 +88,21 @@ export function CompanionCard({
       </Box>
 
       {/* Name */}
-      <Text bold>{companion.name}</Text>
+      <Text bold>{profile.displayName}</Text>
+      {profile.displayName !== companion.name && (
+        <Text dimColor>{companion.name}</Text>
+      )}
+
+      <Box flexDirection="column" marginTop={1}>
+        <Text dimColor>frontstage</Text>
+        <Text>style: {profile.style}</Text>
+        <Text>verbosity: {profile.verbosity}</Text>
+        <Text>local reactions: {profile.localReactions ? 'on' : 'off'}</Text>
+        <Text>
+          state: {companionState?.mode ?? 'idle'} /{' '}
+          {companionState?.mood ?? 'calm'}
+        </Text>
+      </Box>
 
       {/* Personality */}
       <Box marginY={1}>

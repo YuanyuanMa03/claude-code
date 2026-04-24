@@ -11,6 +11,11 @@ import {
   STAT_NAMES,
   type StatName,
 } from './types.js'
+export {
+  getCompanionDisplayName,
+  getCompanionProfile,
+  sanitizeCompanionName,
+} from './profile.js'
 
 // Mulberry32 — tiny seeded PRNG, good enough for picking ducks
 function mulberry32(seed: number): () => number {

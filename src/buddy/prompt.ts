@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle'
 import type { Message } from '../types/message.js'
 import type { Attachment } from '../utils/attachments.js'
 import { getGlobalConfig } from '../utils/config.js'
-import { getCompanion } from './companion.js'
+import { getCompanion, getCompanionProfile } from './companion.js'
 
 export function companionIntroText(name: string, species: string): string {
   return `# Companion
@@ -18,18 +18,19 @@ export function getCompanionIntroAttachment(
   if (!feature('BUDDY')) return []
   const companion = getCompanion()
   if (!companion || getGlobalConfig().companionMuted) return []
+  const profile = getCompanionProfile(companion)
 
   // Skip if already announced for this companion.
   for (const msg of messages ?? []) {
     if (msg.type !== 'attachment') continue
     if (msg.attachment!.type !== 'companion_intro') continue
-    if (msg.attachment!.name === companion.name) return []
+    if (msg.attachment!.name === profile.displayName) return []
   }
 
   return [
     {
       type: 'companion_intro',
-      name: companion.name,
+      name: profile.displayName,
       species: companion.species,
     },
   ]

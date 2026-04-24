@@ -469,6 +469,8 @@ import { TungstenLiveMonitor } from '@claude-code-best/builtin-tools/tools/Tungs
 import { IssueFlagBanner } from '../components/PromptInput/IssueFlagBanner.js';
 import { useIssueFlagBanner } from '../hooks/useIssueFlagBanner.js';
 import { CompanionSprite, CompanionFloatingBubble, MIN_COLS_FOR_FULL_SPRITE } from '../buddy/CompanionSprite.js';
+import { getCompanion, getCompanionProfile } from '../buddy/companion.js';
+import { applyCompanionEvent, type CompanionEvent } from '../buddy/frontstage.js';
 import { DevBar } from '../components/DevBar.js';
 import { UltraplanChoiceDialog } from '../components/ultraplan/UltraplanChoiceDialog.js';
 import { UltraplanLaunchDialog } from '../components/ultraplan/UltraplanLaunchDialog.js';
@@ -3347,6 +3349,27 @@ export function REPL({
       resetTurnToolDuration();
       resetTurnClassifierDuration();
 
+      const emitCompanionEvent = (event: CompanionEvent) => {
+        if (!feature('BUDDY')) return;
+        const companion = getCompanion();
+        if (!companion || getGlobalConfig().companionMuted) return;
+        const profile = getCompanionProfile(companion);
+        setAppState(prev => {
+          const result = applyCompanionEvent(prev.companionState, profile, event);
+          return {
+            ...prev,
+            companionState: result.state,
+            companionReaction: result.reaction ?? prev.companionReaction,
+          };
+        });
+      };
+
+      emitCompanionEvent({
+        kind: 'turn_start',
+        severity: 'info',
+        now: Date.now(),
+      });
+
       for await (const event of query({
         messages: messagesIncludingNewMessages,
         systemPrompt,
@@ -3359,19 +3382,11 @@ export function REPL({
         onQueryEvent(event);
       }
 
-      if (feature('BUDDY') && typeof (globalThis as Record<string, unknown>).fireCompanionObserver === 'function') {
-        const _fireCompanionObserver = (globalThis as Record<string, unknown>).fireCompanionObserver as (
-          msgs: unknown,
-          cb: (r: unknown) => void,
-        ) => void;
-        void _fireCompanionObserver(messagesRef.current, reaction =>
-          setAppState(prev =>
-            prev.companionReaction === (reaction as typeof prev.companionReaction)
-              ? prev
-              : { ...prev, companionReaction: reaction as typeof prev.companionReaction },
-          ),
-        );
-      }
+      emitCompanionEvent({
+        kind: 'turn_done',
+        severity: 'success',
+        now: Date.now(),
+      });
 
       queryCheckpoint('query_end');
 

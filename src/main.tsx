@@ -4307,6 +4307,12 @@ async function run(): Promise<CommanderCommand> {
 				coordinatorTaskIndex: -1,
 				viewSelectionMode: "none",
 				footerSelection: null,
+				companionState: {
+					mode: "idle",
+					mood: "calm",
+					lastEventAt: 0,
+					lastEventKind: undefined,
+				},
 				toolPermissionContext: effectiveToolPermissionContext,
 				agent: mainThreadAgentDefinition?.agentType,
 				agentDefinitions,

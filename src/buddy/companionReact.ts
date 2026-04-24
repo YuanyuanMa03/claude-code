@@ -6,6 +6,8 @@
  * generate a reaction shown in the CompanionSprite speech bubble.
  */
 import { getCompanion } from './companion.js'
+import { getCompanionProfile } from './profile.js'
+import { applyCompanionEvent, DEFAULT_COMPANION_STATE } from './frontstage.js'
 import { getGlobalConfig } from '../utils/config.js'
 import { getClaudeAIOAuthTokens } from '../utils/auth.js'
 import { getOauthConfig } from '../constants/oauth.js'
@@ -16,6 +18,7 @@ import type { Message } from '../types/message.js'
 
 let lastReactTime = 0
 const MIN_INTERVAL_MS = 45_000 // official is roughly 30-60s
+let localState = DEFAULT_COMPANION_STATE
 
 // ─── Recent reactions (avoid repetition) ────────────
 
@@ -42,7 +45,10 @@ export function triggerCompanionReaction(
   const companion = getCompanion()
   if (!companion || getGlobalConfig().companionMuted) return
 
-  const addressed = isAddressed(messages, companion.name)
+  const profile = getCompanionProfile(companion)
+  const addressed =
+    isAddressed(messages, companion.name) ||
+    isAddressed(messages, profile.displayName)
 
   const now = Date.now()
   if (!addressed && now - lastReactTime < MIN_INTERVAL_MS) return
@@ -51,6 +57,18 @@ export function triggerCompanionReaction(
   if (!transcript.trim()) return
 
   lastReactTime = now
+
+  if (profile.localReactions) {
+    const result = applyCompanionEvent(localState, profile, {
+      kind: addressed ? 'addressed' : 'turn_done',
+      addressed,
+      severity: addressed ? 'info' : 'success',
+      now,
+    })
+    localState = result.state
+    if (result.reaction) setReaction(result.reaction)
+    return
+  }
 
   void callBuddyReactAPI(companion, transcript, addressed)
     .then(reaction => {
