@@ -1,16 +1,16 @@
 {
-  "name": "claude-code-best",
-  "version": "1.11.1",
-  "description": "Reverse-engineered Anthropic Claude Code CLI — interactive AI coding assistant in the terminal",
+  "name": "agri-agent",
+  "version": "0.1.0-alpha",
+  "description": "AgriAgent — 基于大模型技术的农业智能体，专注于水稻生长与甲烷排放模拟",
   "type": "module",
-  "author": "claude-code-best <claude-code-best@proton.me>",
+  "author": "YuanyuanMa <mayuanyuan03@outlook.com>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/claude-code-best/claude-code.git"
+    "url": "git+https://github.com/YuanyuanMa03/claude-code.git"
   },
-  "homepage": "https://github.com/claude-code-best/claude-code#readme",
+  "homepage": "https://github.com/YuanyuanMa03/claude-code#readme",
   "bugs": {
-    "url": "https://github.com/claude-code-best/claude-code/issues"
+    "url": "https://github.com/YuanyuanMa03/claude-code/issues"
   },
   "keywords": [
     "claude",

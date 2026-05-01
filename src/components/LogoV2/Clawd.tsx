@@ -4,50 +4,62 @@ import { env } from '../../utils/env.js'
 
 export type ClawdPose =
   | 'default'
-  | 'arms-up' // both arms raised (used during jump)
-  | 'look-left' // both pupils shifted left
-  | 'look-right' // both pupils shifted right
+  | 'arms-up' // growth / flourishing
+  | 'look-left' // looking at data
+  | 'look-right' // looking at results
 
 type Props = {
   pose?: ClawdPose
 }
 
-// Standard-terminal pose fragments. Each row is split into segments so we can
-// vary only the parts that change (eyes, arms) while keeping the body/bg spans
-// stable. All poses end up 9 cols wide.
-//
-// arms-up: the row-2 arm shapes (▝▜ / ▛▘) move to row 1 as their
-// bottom-heavy mirrors (▗▟ / ▙▖) — same silhouette, one row higher.
-//
-// look-* use top-quadrant eye chars (▙/▟) so both eyes change from the
-// default (▛/▜, bottom pupils) — otherwise only one eye would appear to move.
+// 🌾 Rice seedling ASCII art — AgriAgent mascot
+// A small rice seedling with eyes, changing expression per pose.
+// 9 cols wide to match original layout.
+
 type Segments = {
-  /** row 1 left (no bg): optional raised arm + side */
-  r1L: string
-  /** row 1 eyes (with bg): left-eye, forehead, right-eye */
-  r1E: string
-  /** row 1 right (no bg): side + optional raised arm */
-  r1R: string
-  /** row 2 left (no bg): arm + body curve */
-  r2L: string
-  /** row 2 right (no bg): body curve + arm */
-  r2R: string
+  /** row 1: leaf tips */
+  r1: string
+  /** row 2: head with eyes */
+  r2: string
+  /** row 3: stem */
+  r3: string
+  /** row 4: roots */
+  r4: string
 }
 
 const POSES: Record<ClawdPose, Segments> = {
-  default: { r1L: ' ▐', r1E: '▛███▜', r1R: '▌', r2L: '▝▜', r2R: '▛▘' },
-  'look-left': { r1L: ' ▐', r1E: '▟███▟', r1R: '▌', r2L: '▝▜', r2R: '▛▘' },
-  'look-right': { r1L: ' ▐', r1E: '▙███▙', r1R: '▌', r2L: '▝▜', r2R: '▛▘' },
-  'arms-up': { r1L: '▗▟', r1E: '▛███▜', r1R: '▙▖', r2L: ' ▜', r2R: '▛ ' },
+  default: {
+    r1: '  ╱│╲  ',
+    r2: ' (◕│◕) ',
+    r3: '  ╱│╲  ',
+    r4: '  ╱ ╲  ',
+  },
+  'look-left': {
+    r1: '  ╱│╲  ',
+    r2: ' (◄│►) ',
+    r3: '  ╱│╲  ',
+    r4: '  ╱ ╲  ',
+  },
+  'look-right': {
+    r1: '  ╱│╲  ',
+    r2: ' (►│◄) ',
+    r3: '  ╱│╲  ',
+    r4: '  ╱ ╲  ',
+  },
+  'arms-up': {
+    r1: ' ╱│││╲ ',
+    r2: ' (◕│◕) ',
+    r3: '  ╱│╲  ',
+    r4: '  ╱ ╲  ',
+  },
 }
 
-// Apple Terminal uses a bg-fill trick (see below), so only eye poses make
-// sense. Arm poses fall back to default.
-const APPLE_EYES: Record<ClawdPose, string> = {
-  default: ' ▗   ▖ ',
-  'look-left': ' ▘   ▘ ',
-  'look-right': ' ▝   ▝ ',
-  'arms-up': ' ▗   ▖ ',
+// Apple Terminal fallback — simple rice shape
+const APPLE_ART: Record<ClawdPose, string[]> = {
+  default: ['  🌱  ', ' ◕│◕ ', '  │   ', ' ╱ ╲  '],
+  'look-left': ['  🌱  ', ' ◄│► ', '  │   ', ' ╱ ╲  '],
+  'look-right': ['  🌱  ', ' ►│◄ ', '  │   ', ' ╱ ╲  '],
+  'arms-up': [' 🌿  ', ' ◕│◕ ', '  │   ', ' ╱ ╲  '],
 }
 
 export function Clawd({ pose = 'default' }: Props = {}): React.ReactNode {
@@ -57,42 +69,27 @@ export function Clawd({ pose = 'default' }: Props = {}): React.ReactNode {
   const p = POSES[pose]
   return (
     <Box flexDirection="column">
+      <Text color="green">{p.r1}</Text>
       <Text>
-        <Text color="clawd_body">{p.r1L}</Text>
-        <Text color="clawd_body" backgroundColor="clawd_background">
-          {p.r1E}
-        </Text>
-        <Text color="clawd_body">{p.r1R}</Text>
+        <Text color="green">{' '}</Text>
+        <Text color="green" bold>{p.r2.slice(1, -1)}</Text>
+        <Text color="green">{' '}</Text>
       </Text>
-      <Text>
-        <Text color="clawd_body">{p.r2L}</Text>
-        <Text color="clawd_body" backgroundColor="clawd_background">
-          █████
-        </Text>
-        <Text color="clawd_body">{p.r2R}</Text>
-      </Text>
-      <Text color="clawd_body">
-        {'  '}▘▘ ▝▝{'  '}
-      </Text>
+      <Text color="green">{p.r3}</Text>
+      <Text color="yellow">{p.r4}</Text>
     </Box>
   )
 }
 
 function AppleTerminalClawd({ pose }: { pose: ClawdPose }): React.ReactNode {
-  // Apple's Terminal renders vertical space between chars by default.
-  // It does NOT render vertical space between background colors
-  // so we use background color to draw the main shape.
+  const lines = APPLE_ART[pose]
   return (
     <Box flexDirection="column" alignItems="center">
-      <Text>
-        <Text color="clawd_body">▗</Text>
-        <Text color="clawd_background" backgroundColor="clawd_body">
-          {APPLE_EYES[pose]}
+      {lines.map((line, i) => (
+        <Text key={i} color={i === 3 ? 'yellow' : 'green'}>
+          {line}
         </Text>
-        <Text color="clawd_body">▖</Text>
-      </Text>
-      <Text backgroundColor="clawd_body">{' '.repeat(7)}</Text>
-      <Text color="clawd_body">▘▘ ▝▝</Text>
+      ))}
     </Box>
   )
 }
