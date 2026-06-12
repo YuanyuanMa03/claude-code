@@ -29,6 +29,7 @@ export type ProviderPreset = {
   icon: string
   baseURL: string
   apiKeyPage: string
+  modelsPage: string
   freeTier: string
   keyFormat: string
   codingPlan?: {
@@ -48,6 +49,7 @@ export const CHINA_LLM_PROVIDERS: ProviderPreset[] = [
     icon: '\u{1F525}',
     baseURL: 'https://api.deepseek.com',
     apiKeyPage: 'https://platform.deepseek.com/api_keys',
+    modelsPage: 'https://api-docs.deepseek.com/zh-cn/',
     freeTier: '5M tokens on signup (30 days), min top-up ¥10',
     keyFormat: 'sk-...',
     models: [
@@ -76,6 +78,7 @@ export const CHINA_LLM_PROVIDERS: ProviderPreset[] = [
     icon: '\u{1F9E0}',
     baseURL: 'https://open.bigmodel.cn/api/paas/v4',
     apiKeyPage: 'https://open.bigmodel.cn/user/apiKeys',
+    modelsPage: 'https://docs.bigmodel.cn/cn/guide/start/model-overview',
     freeTier: 'GLM-4.7-Flash / GLM-Z1-Flash free forever',
     keyFormat: '{id}.{secret}',
     codingPlan: {
@@ -141,6 +144,8 @@ export const CHINA_LLM_PROVIDERS: ProviderPreset[] = [
     icon: '☁️',
     baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     apiKeyPage: 'https://bailian.console.aliyun.com',
+    modelsPage:
+      'https://help.aliyun.com/zh/model-studio/getting-started/models',
     freeTier: '90-day free tier for all models after activation',
     keyFormat: 'sk-...',
     codingPlan: {
@@ -191,6 +196,7 @@ export const CHINA_LLM_PROVIDERS: ProviderPreset[] = [
     icon: '\u{1F4F1}',
     baseURL: 'https://api.xiaomimimo.com/v1',
     apiKeyPage: 'https://platform.xiaomimimo.com/api-keys',
+    modelsPage: 'https://platform.xiaomimimo.com/models',
     freeTier: 'Credits for new users, mimo-v2-flash low cost',
     keyFormat: 'sk-...',
     codingPlan: {

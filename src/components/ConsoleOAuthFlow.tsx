@@ -19,7 +19,7 @@ import { getOauthAccountInfo, validateForceLoginOrg } from '../utils/auth.js';
 import { openBrowser } from '../utils/browser.js';
 import { logError } from '../utils/log.js';
 import { getSettings_DEPRECATED, updateSettingsForSource } from '../utils/settings/settings.js';
-import { CHINA_LLM_PROVIDERS, type ProviderPreset, resolveChinaProviderBaseURL } from '../utils/chinaLlmProviders.js';
+import { CHINA_LLM_PROVIDERS, type ProviderPreset, resolveChinaProviderBaseURL } from 'src/utils/chinaLlmProviders.js';
 import { Select } from './CustomSelect/select.js';
 import { Spinner } from './Spinner.js';
 import TextInput from './TextInput.js';
@@ -1372,26 +1372,38 @@ function OAuthStatusMessage({
           </Text>
           <Box>
             <Select
-              options={models.map(m => {
-                const priceLabel =
-                  m.inputPricePerMTok === 0 && m.outputPricePerMTok === 0
-                    ? 'Free'
-                    : `¥${m.inputPricePerMTok}/¥${m.outputPricePerMTok}`;
-                const tagLabel = m.tags?.length ? ` [${m.tags.join(', ')}]` : '';
-                return {
+              options={[
+                ...models.map(m => {
+                  const priceLabel =
+                    m.inputPricePerMTok === 0 && m.outputPricePerMTok === 0
+                      ? 'Free'
+                      : `¥${m.inputPricePerMTok}/¥${m.outputPricePerMTok}`;
+                  const tagLabel = m.tags?.length ? ` [${m.tags.join(', ')}]` : '';
+                  return {
+                    label: (
+                      <Text>
+                        {m.label} ·{' '}
+                        <Text dimColor>
+                          {priceLabel} · {m.contextWindow}
+                          {tagLabel}
+                        </Text>
+                        {'\n'}
+                      </Text>
+                    ),
+                    value: m.id,
+                  };
+                }),
+                {
                   label: (
                     <Text>
-                      {m.label} ·{' '}
-                      <Text dimColor>
-                        {priceLabel} · {m.contextWindow}
-                        {tagLabel}
-                      </Text>
+                      ✏️ Custom model
+                      <Text dimColor> · enter model name manually</Text>
                       {'\n'}
                     </Text>
                   ),
-                  value: m.id,
-                };
-              })}
+                  value: '__custom__',
+                },
+              ]}
               onChange={value => {
                 logEvent('tengu_china_model_selected', {});
                 setOAuthStatus({ state: 'china_apikey', provider, mode: accessMode, modelId: value, apiKey: '' });
@@ -1410,22 +1422,36 @@ function OAuthStatusMessage({
       const [chinaKeyError, setChinaKeyError] = useState<string | null>(null);
 
       const doChinaSave = useCallback(() => {
+        const effectiveModelId = modelId === '__custom__' ? chinaKeyValue.trim() : modelId;
+        if (!effectiveModelId) {
+          setChinaKeyError(modelId === '__custom__' ? 'Please enter a model name' : 'Please enter an API key');
+          return;
+        }
+        if (modelId === '__custom__') {
+          logEvent('tengu_china_custom_model_entered', {});
+          setOAuthStatus({ state: 'china_apikey', provider, mode: accessMode, modelId: effectiveModelId, apiKey: '' });
+          setChinaKeyValue('');
+          setChinaKeyError(null);
+          return;
+        }
         if (!chinaKeyValue.trim()) {
           setChinaKeyError('Please enter an API key');
           return;
         }
         const baseUrl = resolveChinaProviderBaseURL(provider.id, accessMode);
-        const env: Record<string, string> = {
+        const env: Record<string, string | undefined> = {
+          OPENAI_AUTH_MODE: undefined,
           OPENAI_BASE_URL: baseUrl,
           OPENAI_API_KEY: chinaKeyValue.trim(),
           OPENAI_DEFAULT_SONNET_MODEL: modelId,
           OPENAI_DEFAULT_HAIKU_MODEL: modelId,
           OPENAI_DEFAULT_OPUS_MODEL: modelId,
         };
-        const { error } = updateSettingsForSource('userSettings', {
-          modelType: 'openai' as any,
-          env,
-        } as any);
+        const settingsUpdate: Parameters<typeof updateSettingsForSource>[1] = {
+          modelType: 'openai',
+          env: env as unknown as Record<string, string>,
+        };
+        const { error } = updateSettingsForSource('userSettings', settingsUpdate);
         if (error) {
           setOAuthStatus({
             state: 'error',
@@ -1433,7 +1459,13 @@ function OAuthStatusMessage({
             toRetry: { state: 'china_apikey', provider, mode: accessMode, modelId, apiKey: chinaKeyValue },
           });
         } else {
-          for (const [k, v] of Object.entries(env)) process.env[k] = v;
+          for (const [k, v] of Object.entries(env)) {
+            if (v === undefined) {
+              delete process.env[k];
+            } else {
+              process.env[k] = v;
+            }
+          }
           logEvent('tengu_china_login_success', {});
           setOAuthStatus({ state: 'success' });
           void onDone();
@@ -1448,18 +1480,47 @@ function OAuthStatusMessage({
         { context: 'Confirmation' },
       );
 
+      const isCustomModelEntry = modelId === '__custom__';
+      const allModels = CHINA_LLM_PROVIDERS.flatMap(p =>
+        p.models.map(m => ({ id: m.id, label: m.label, provider: p.label })),
+      );
+      const modelSuggestions = isCustomModelEntry
+        ? chinaKeyValue.trim()
+          ? allModels.filter(m => m.id.toLowerCase().includes(chinaKeyValue.trim().toLowerCase()))
+          : allModels
+        : [];
+      const keyPage = isCustomModelEntry
+        ? provider.apiKeyPage
+        : accessMode === 'coding-plan' && provider.codingPlan
+          ? provider.codingPlan.purchasePage
+          : provider.apiKeyPage;
+      const keyFormat = isCustomModelEntry
+        ? provider.keyFormat
+        : accessMode === 'coding-plan' && provider.codingPlan
+          ? provider.codingPlan.keyFormat
+          : provider.keyFormat;
+
       return (
         <Box flexDirection="column" gap={1} marginTop={1}>
           <Text bold>
-            {provider.icon} {provider.label} API Key
+            {provider.icon} {provider.label} {isCustomModelEntry ? '— Custom Model' : 'API Key'}
           </Text>
           <Box flexDirection="column" gap={0}>
-            <Text dimColor> Get your key: {provider.apiKeyPage}</Text>
-            <Text dimColor> {provider.freeTier}</Text>
-            <Text dimColor> Key format: {provider.keyFormat}</Text>
+            {isCustomModelEntry ? (
+              <Text dimColor> Enter any model ID supported by this provider. Browse models: {provider.modelsPage}</Text>
+            ) : (
+              <>
+                <Text dimColor> Get your key: {keyPage}</Text>
+                <Text dimColor>
+                  {' '}
+                  {accessMode === 'coding-plan' ? 'Use your Coding Plan credential here' : provider.freeTier}
+                </Text>
+                <Text dimColor> Key format: {keyFormat}</Text>
+              </>
+            )}
           </Box>
           <Box>
-            <Text>API Key: </Text>
+            <Text>{isCustomModelEntry ? 'Model name: ' : 'API Key: '}</Text>
             <TextInput
               value={chinaKeyValue}
               onChange={v => {
@@ -1470,12 +1531,28 @@ function OAuthStatusMessage({
               cursorOffset={chinaKeyCursor}
               onChangeCursorOffset={setChinaKeyCursor}
               columns={useTerminalSize().columns - 12}
-              mask="*"
+              mask={isCustomModelEntry ? undefined : '*'}
               focus={true}
             />
           </Box>
           {chinaKeyError ? <Text color="error">{chinaKeyError}</Text> : null}
-          <Text dimColor>Enter to confirm · Esc to go back</Text>
+          {isCustomModelEntry && modelSuggestions.length > 0 && (
+            <Box flexDirection="column" gap={0}>
+              <Text dimColor>{chinaKeyValue.trim() ? 'Matching models:' : 'Known models:'}</Text>
+              {modelSuggestions.map(m => (
+                <Text key={m.id} dimColor>
+                  {' '}
+                  {m.id}{' '}
+                  <Text>
+                    ({m.label} — {m.provider})
+                  </Text>
+                </Text>
+              ))}
+            </Box>
+          )}
+          <Text dimColor>
+            {isCustomModelEntry ? 'Enter to continue · Esc to go back' : 'Enter to confirm · Esc to go back'}
+          </Text>
         </Box>
       );
     }
